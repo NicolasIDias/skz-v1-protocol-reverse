@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="manifest" href="manifest.json" />
+    <meta name="theme-color" content="#007bff" />
+    <script>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("sw.js");
+      }
+    </script>
+    <title>SKZ Lightstick Pro Controller</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+        text-align: center;
+        padding: 20px 16px;
+        background: #0d0d0d;
+        color: #f0f0f0;
+        min-height: 100vh;
+      }
+
+      h1 {
+        font-size: 1.6rem;
+        margin-bottom: 16px;
+        letter-spacing: 1px;
+      }
+
+      h3 {
+        font-size: 1rem;
+        margin-bottom: 10px;
+        color: #aaa;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      button {
+        padding: 12px 20px;
+        margin: 5px;
+        font-size: 15px;
+        cursor: pointer;
+        border-radius: 10px;
+        border: none;
+        min-width: 120px;
+        transition: opacity 0.2s, transform 0.1s;
+        font-weight: 500;
+      }
+
+      button:active {
+        transform: scale(0.96);
+      }
+
+      .connect {
+        background: #007bff;
+        color: white;
+        width: 85%;
+        font-weight: bold;
+        font-size: 16px;
+        padding: 14px 20px;
+      }
+
+      .red {
+        background: #ff4d4d;
+        color: white;
+      }
+
+      .green {
+        background: #4dff88;
+        color: #111;
+      }
+
+      .blue {
+        background: #4d94ff;
+        color: white;
+      }
+
+      .yellow {
+        background: #ffff4d;
+        color: #111;
+      }
+
+      .off {
+        background: #444;
+        color: #ccc;
+      }
+
+      .effect {
+        background: #a040ff;
+        color: white;
+      }
+
+      .random {
+        background: linear-gradient(
+          135deg,
+          #ff4d4d,
+          #a040ff,
+          #4d94ff,
+          #4dff88
+        );
+        color: white;
+        font-weight: bold;
+      }
+
+      .stop {
+        background: #ff9800;
+        color: white;
+        font-weight: bold;
+      }
+
+      hr {
+        border: none;
+        border-top: 1px solid #222;
+        margin: 18px 0;
+      }
+
+      #status {
+        margin-top: 20px;
+        font-size: 13px;
+        color: #888;
+      }
+
+      #memberButtons button {
+        background: #1a1a1a;
+        border: 1px solid #444;
+        color: #f0f0f0;
+      }
+
+      #memberButtons {
+        margin-top: 10px;
+      }
+
+      .overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.92);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+      }
+
+      .overlay-hidden {
+        display: none;
+      }
+
+      .spinner {
+        width: 52px;
+        height: 52px;
+        border: 5px solid #222;
+        border-top: 5px solid #007bff;
+        border-radius: 50%;
+        animation: spin 0.9s linear infinite;
+        margin-bottom: 24px;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .overlay-text {
+        font-size: 16px;
+        color: #ccc;
+        letter-spacing: 0.3px;
+      }
+
+      .overlay-progress {
+        width: 200px;
+        height: 4px;
+        background: #222;
+        border-radius: 4px;
+        margin-top: 16px;
+        overflow: hidden;
+      }
+
+      .overlay-progress-bar {
+        height: 100%;
+        background: #007bff;
+        border-radius: 4px;
+        width: 0%;
+        transition: width 0.4s linear;
+      }
+
+      .toast-container {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 10000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        pointer-events: none;
+      }
+
+      .toast {
+        background: #1e1e1e;
+        color: #f0f0f0;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+        border-left: 4px solid #007bff;
+        animation: toastIn 0.25s ease, toastOut 0.3s ease 1.7s forwards;
+        max-width: 90vw;
+        word-break: break-word;
+      }
+
+      .toast.error {
+        border-left-color: #ff4d4d;
+        color: #ff9999;
+      }
+
+      @keyframes toastIn {
+        from {
+          opacity: 0;
+          transform: translateY(12px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes toastOut {
+        from {
+          opacity: 1;
+        }
+        to {
+          opacity: 0;
+          transform: translateY(-8px);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>⚡ SKZ V1 Controller</h1>
+    <button class="connect" id="btnConnect">Conectar Lightstick</button>
+
+    <div id="controls" style="display: none">
+      <hr />
+      <h3>Cores Fixas</h3>
+      <button class="red" onclick="sendColor(0x01)">Vermelho</button>
+      <button class="yellow" onclick="sendColor(0x03)">Amarelo</button>
+      <button class="green" onclick="sendColor(0x0a)">Verde</button>
+      <button class="blue" onclick="sendColor(0x14)">Azul</button>
+
+      <hr />
+      <h3>Efeitos</h3>
+      <button class="effect" onclick="startFlash(0x01)">Piscar Vermelho</button>
+      <button class="effect" onclick="startFlash(0x14)">Piscar Azul</button>
+      <button class="effect" onclick="startFlash(0x03)">Piscar Amarelo</button>
+      <button class="effect" onclick="startFlash(0x0a)">Piscar Verde</button>
+      <br />
+      <button class="random" onclick="startRandomFlash()">
+        Piscar Aleatório
+      </button>
+      <br /><br />
+      <button class="stop" onclick="stopEffects()">PARAR EFEITOS</button>
+      <button class="off" onclick="sendColor(0x00, true)">Apagar Tudo</button>
+
+      <hr />
+      <h3>Modos Especiais</h3>
+      <button class="random" onclick="startRainbow()">Modo Arco-Íris</button>
+      <button class="effect" onclick="startMemberColors()">
+        Stray Kids Mode
+      </button>
+
+      <div id="memberButtons">
+        <button onclick="sendColor(0x01)">CHANGBIN (Vermelho)</button>
+        <button onclick="sendColor(0x14)">BANG CHAN (Azul)</button>
+      </div>
+    </div>
+
+    <p id="status">Status: Desconectado</p>
+
+    <div id="syncOverlay" class="overlay overlay-hidden">
+      <div class="spinner"></div>
+      <div class="overlay-text" id="syncText">Sincronizando bastão...</div>
+      <div class="overlay-progress">
+        <div class="overlay-progress-bar" id="syncBar"></div>
+      </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+      let stickChar = null;
+      let effectInterval = null;
+      let writeQueue = Promise.resolve();
+      const SERVICE_UUID = "87011111-ffcc-2222-0000-000000008888";
+      const CHAR_UUID = "000092a4-0000-1000-8000-00805f9b34fb";
+
+      function showToast(message, isError = false) {
+        const container = document.getElementById("toastContainer");
+        const toast = document.createElement("div");
+        toast.className = "toast" + (isError ? " error" : "");
+        toast.textContent = message;
+        container.appendChild(toast);
+        setTimeout(() => toast.remove(), 2100);
+      }
+
+      function queueWrite(data) {
+        writeQueue = writeQueue
+          .then(() => {
+            if (!stickChar) return Promise.reject(new Error("Não conectado"));
+            return stickChar.writeValue(data);
+          })
+          .catch((err) => {
+            showToast("BLE Write Error: " + err.message, true);
+          });
+        return writeQueue;
+      }
+
+      function showSyncOverlay() {
+        const overlay = document.getElementById("syncOverlay");
+        const bar = document.getElementById("syncBar");
+        const text = document.getElementById("syncText");
+        overlay.classList.remove("overlay-hidden");
+
+        const messages = [
+          "Sincronizando bastão...",
+          "Estabelecendo comunicação BLE...",
+          "Validando protocolo de autenticação...",
+          "Negociando parâmetros de conexão...",
+          "Verificando firmware do dispositivo...",
+          "Configurando canais de controle...",
+          "Calibrando LEDs internos...",
+          "Mapeando comandos de cor...",
+          "Inicializando buffer de transmissão...",
+          "Finalizando handshake...",
+        ];
+
+        let step = 0;
+        const totalSteps = messages.length;
+        const stepDuration = 20000 / totalSteps;
+
+        text.textContent = messages[0];
+        bar.style.width = "0%";
+
+        const msgInterval = setInterval(() => {
+          step++;
+          if (step < totalSteps) {
+            text.textContent = messages[step];
+            bar.style.width = ((step + 1) / totalSteps) * 100 + "%";
+          }
+        }, stepDuration);
+
+        setTimeout(() => {
+          clearInterval(msgInterval);
+          bar.style.width = "100%";
+          overlay.classList.add("overlay-hidden");
+          document.getElementById("controls").style.display = "block";
+          showToast("Bastão pronto para uso");
+        }, 20000);
+      }
+
+      document
+        .getElementById("btnConnect")
+        .addEventListener("click", async () => {
+          try {
+            showToast("Buscando dispositivo...");
+            const device = await navigator.bluetooth.requestDevice({
+              filters: [{ namePrefix: "Stray Kids" }],
+              optionalServices: [SERVICE_UUID],
+            });
+            const server = await device.gatt.connect();
+            const service = await server.getPrimaryService(SERVICE_UUID);
+            stickChar = await service.getCharacteristic(CHAR_UUID);
+            await stickChar.startNotifications();
+            stickChar.addEventListener(
+              "characteristicvaluechanged",
+              handleNotifications
+            );
+
+            await queueWrite(
+              new Uint8Array([0xff, 0xad, 0x03, 0x01, 0x00, 0x00, 0xff])
+            );
+            document.getElementById("status").innerText =
+              "Status: Autenticando...";
+            showToast("Solicitando autenticação...");
+          } catch (err) {
+            document.getElementById("status").innerText = "Erro: " + err;
+            showToast("Erro: " + err.message, true);
+          }
+        });
+
+      function handleNotifications(event) {
+        let val = new Uint8Array(event.target.value.buffer);
+        if (val[1] === 0xad && val[3] === 0x01) {
+          confirmAuth(val[5], val[6]);
+        }
+      }
+
+      async function confirmAuth(p1, p2) {
+        try {
+          await queueWrite(
+            new Uint8Array([0xff, 0xad, 0x03, 0x02, p1, p2, 0xff])
+          );
+          document.getElementById("status").innerText = "Status: Conectado!";
+          showToast("Autenticação concluída");
+          showSyncOverlay();
+        } catch (err) {
+          showToast("Erro na autenticação: " + err.message, true);
+        }
+      }
+
+      async function sendColor(colorId, isOff = false) {
+        if (!stickChar) return;
+        try {
+          const cmd = isOff
+            ? new Uint8Array([0xff, 0xa2, 0x00, 0xff])
+            : new Uint8Array([0xff, 0xa5, 0x02, colorId, 0x02, 0xff]);
+          await queueWrite(cmd);
+        } catch (err) {
+          showToast("Erro ao enviar cor: " + err.message, true);
+        }
+      }
+
+      function startFlash(colorId) {
+        stopEffects();
+        showToast("Efeito piscar iniciado");
+        let isOn = true;
+        effectInterval = setInterval(() => {
+          if (isOn) {
+            sendColor(colorId);
+          } else {
+            sendColor(0x00, true);
+          }
+          isOn = !isOn;
+        }, 250);
+      }
+
+      function startRandomFlash() {
+        stopEffects();
+        showToast("Piscar aleatório iniciado");
+        const colorPool = [0x01, 0x03, 0x0a, 0x14];
+        let isOn = true;
+        effectInterval = setInterval(() => {
+          if (isOn) {
+            const randomId =
+              colorPool[Math.floor(Math.random() * colorPool.length)];
+            sendColor(randomId);
+          } else {
+            sendColor(0x00, true);
+          }
+          isOn = !isOn;
+        }, 200);
+      }
+
+      function stopEffects() {
+        if (effectInterval) {
+          clearInterval(effectInterval);
+          effectInterval = null;
+          showToast("Efeitos parados");
+        }
+      }
+
+      async function startRainbow() {
+        stopEffects();
+        showToast("Modo arco-íris ativado");
+        const colorPool = [0x01, 0x03, 0x0a, 0x14];
+        let currentIndex = 0;
+
+        effectInterval = setInterval(() => {
+          sendColor(colorPool[currentIndex]);
+          currentIndex = (currentIndex + 1) % colorPool.length;
+        }, 500);
+      }
+
+      async function startMemberColors() {
+        stopEffects();
+        showToast("Stray Kids Mode ativado");
+      }
+
+      async function testBrightness(level) {
+        if (!stickChar) return;
+        try {
+          const cmd = new Uint8Array([0xff, 0xa5, 0x02, 0x14, level, 0xff]);
+          await queueWrite(cmd);
+          showToast("Brilho ajustado: " + level);
+        } catch (err) {
+          showToast("Erro ao ajustar brilho: " + err.message, true);
+        }
+      }
+    </script>
+  </body>
+</html>
