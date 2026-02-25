@@ -298,6 +298,8 @@
       let stickChar = null;
       let effectInterval = null;
       let writeQueue = Promise.resolve();
+      let isAuthenticated = false;
+      let connectedDevice = null;
       const SERVICE_UUID = "87011111-ffcc-2222-0000-000000008888";
       const CHAR_UUID = "000092a4-0000-1000-8000-00805f9b34fb";
 
@@ -369,11 +371,17 @@
         .getElementById("btnConnect")
         .addEventListener("click", async () => {
           try {
+            if (isAuthenticated) {
+              showToast("Já conectado!");
+              return;
+            }
+            isAuthenticated = false;
             showToast("Buscando dispositivo...");
             const device = await navigator.bluetooth.requestDevice({
               filters: [{ namePrefix: "Stray Kids" }],
               optionalServices: [SERVICE_UUID],
             });
+            connectedDevice = device;
             const server = await device.gatt.connect();
             const service = await server.getPrimaryService(SERVICE_UUID);
             stickChar = await service.getCharacteristic(CHAR_UUID);
@@ -396,8 +404,14 @@
         });
 
       function handleNotifications(event) {
+        if (isAuthenticated) return;
         let val = new Uint8Array(event.target.value.buffer);
         if (val[1] === 0xad && val[3] === 0x01) {
+          isAuthenticated = true;
+          stickChar.removeEventListener(
+            "characteristicvaluechanged",
+            handleNotifications
+          );
           confirmAuth(val[5], val[6]);
         }
       }
@@ -411,6 +425,7 @@
           showToast("Autenticação concluída");
           showSyncOverlay();
         } catch (err) {
+          isAuthenticated = false;
           showToast("Erro na autenticação: " + err.message, true);
         }
       }
